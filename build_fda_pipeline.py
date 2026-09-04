@@ -561,6 +561,67 @@ for row in ws4.iter_rows(min_row=2):
     for cell in row: cell.alignment = wrap
     if row[0].value and not row[1].value and row[0].value != "": row[0].font = Font(bold=True)
 
+# ---------- Sheet 5: Ticker Watchlist (unique tickers) ----------
+TV_CHART = "https://www.tradingview.com/chart/Q1c5VWwD/?symbol="
+
+ws5 = wb.create_sheet("Ticker Watchlist")
+ws5.append(["代號 Ticker (按此開圖 click to chart)","公司 Company","交易所 Exchange","上巿類型 Listing",
+            "總部 HQ","巿值級別 Cap tier","候選藥數目 #","審批中 NDA/BLA #","Phase 3 #","近期獲批 #",
+            "平均 PoS (%)","主要治療領域 TAs","TradingView URL"])
+seen = {}
+for (co, tk), a in agg.items():
+    if tk in seen:
+        e = seen[tk]
+        e["n"] += a["n"]; e["nda"] += a["nda"]; e["p3"] += a["p3"]; e["appr"] += a["appr"]
+        e["pos"] += a["pos"]; e["tas"] |= a["tas"]
+    else:
+        seen[tk] = {"co": co, "ex": a["ex"], "lst": a["lst"], "hq": a["hq"], "cap": a["cap"],
+                    "n": a["n"], "nda": a["nda"], "p3": a["p3"], "appr": a["appr"],
+                    "pos": list(a["pos"]), "tas": set(a["tas"])}
+for tk in sorted(seen):
+    e = seen[tk]
+    ws5.append([tk, e["co"], e["ex"], e["lst"], e["hq"], e["cap"], e["n"], e["nda"], e["p3"], e["appr"],
+                round(sum(e["pos"]) / len(e["pos"])), ", ".join(sorted(e["tas"])),
+                TV_CHART + tk.lower()])
+for c, w in enumerate([28, 30, 12, 12, 16, 16, 10, 12, 10, 10, 11, 46, 62], 1):
+    ws5.column_dimensions[get_column_letter(c)].width = w
+for cell in ws5[1]:
+    cell.fill = hdr_fill; cell.font = hdr_font; cell.alignment = Alignment(wrap_text=True, vertical="center"); cell.border = border
+for row in ws5.iter_rows(min_row=2):
+    for cell in row: cell.border = border; cell.alignment = wrap
+ws5.freeze_panes = "B2"; ws5.auto_filter.ref = ws5.dimensions; ws5.row_dimensions[1].height = 32
+
+# ---------- Apply TradingView hyperlinks to every ticker cell ----------
+link_font = Font(color="0563C1", underline="single")
+# (sheet, 1-based ticker column)
+for sheet, col in ((ws, 3), (ws2, 2), (ws3, 2), (ws5, 1)):
+    for row in sheet.iter_rows(min_row=2, min_col=col, max_col=col):
+        cell = row[0]
+        t = cell.value
+        if not t:
+            continue
+        cell.hyperlink = TV_CHART + str(t).strip().lower()
+        cell.font = link_font
+# URL column on watchlist sheet also clickable
+for row in ws5.iter_rows(min_row=2, min_col=13, max_col=13):
+    cell = row[0]
+    if cell.value:
+        cell.hyperlink = cell.value
+        cell.font = link_font
+
+# ---------- Note the linking convention in Methodology ----------
+ws4.append([""])
+ws4.append(["TradingView 連結 TradingView links",
+            "所有『代號 Ticker』欄位均已加上超連結，格式為 " + TV_CHART + "<ticker(小寫)>，"
+            "例如 ticker = NE -> " + TV_CHART + "ne 。ADR/OTC 代號在 TradingView 上可能需要加交易所前綴 "
+            "(例如 OTC:RHHBY) 方能正確開圖，若連結未能載入請於 TradingView 內手動搜尋該代號。"])
+
 out = "FDA_Pipeline_US_Listed.xlsx"
 wb.save(out)
-print(f"Wrote {out}: {len(ROWS)} candidates across {len(agg)} companies")
+print(f"Wrote {out}: {len(ROWS)} candidates across {len(agg)} companies, {len(seen)} unique tickers")
+
+# Optional second copy under a caller-supplied name (kept out of git on purpose).
+import sys
+if len(sys.argv) > 1:
+    wb.save(sys.argv[1])
+    print("Also wrote", sys.argv[1])

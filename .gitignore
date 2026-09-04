@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+
+# Locally generated named copies (contain build-label in filename)
+FDA_Pipeline_Watchlist*.xlsx

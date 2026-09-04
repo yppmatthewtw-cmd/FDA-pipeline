@@ -42,7 +42,7 @@ ROWS = [
 ("Eli Lilly","LLY","NYSE","US common","US","Mega (>$500bn)","Retatrutide","GIP/GLP-1/glucagon triple agonist","Obesity, T2D, OSA, knee OA","Metabolic/Obesity","Phase 3","—","TRIUMPH Ph3 readouts 2025-2026; filing 2026-27","150","Shares obesity TAM; ~24% weight loss in Ph2",None,"Potential best-in-class efficacy"),
 ("Eli Lilly","LLY","NYSE","US common","US","Mega (>$500bn)","Olomorasib","KRAS G12C inhibitor","NSCLC (1L combo w/ pembrolizumab)","Oncology","Phase 3","Fast Track","SUNRAY-01 Ph3 readout 2026-27","8","KRAS G12C NSCLC + CRC ~$8bn peak class TAM",None,""),
 ("Eli Lilly","LLY","NYSE","US common","US","Mega (>$500bn)","Lepodisiran","siRNA vs Lp(a)","Cardiovascular risk reduction (elevated Lp(a))","Cardiovascular","Phase 3","—","ACCLAIM-Lp(a) outcomes ~2029","15","~64m US adults w/ high Lp(a); class TAM $10-20bn",None,"Competes with Novartis pelacarsen, Amgen olpasiran"),
-("Eli Lilly","LLY","NYSE","US common","US","Mega (>$500bn)","Imlunestrant","Oral SERD","ER+/HER2- breast cancer (ESR1m)","Oncology","NDA/BLA under review","—","FDA decision 2025-26 (EMBER-3)","4","Oral SERD class ~$4-6bn",None,"Approved as Inluriyo (Sep 2025) - verify label scope"),
+("Eli Lilly","LLY","NYSE","US common","US","Mega (>$500bn)","Imlunestrant","Oral SERD","ER+/HER2- breast cancer (ESR1m)","Oncology","Approved (recent)","—","Approved as Inluriyo Sep 2025 (EMBER-3); label expansion trials ongoing","4","Oral SERD class ~$4-6bn",None,"驗證標籤範圍"),
 ("Pfizer","PFE","NYSE","US common","US","Large ($100-500bn)","Sasanlimab","Subcutaneous PD-1","BCG-unresponsive NMIBC (w/ BCG)","Oncology","NDA/BLA under review","—","CREST Ph3 positive; FDA decision 2026","3","NMIBC ~$3bn",None,""),
 ("Pfizer","PFE","NYSE","US common","US","Large ($100-500bn)","Vepdegestrant (w/ Arvinas)","PROTAC estrogen receptor degrader","ER+/HER2- ESR1m breast cancer","Oncology","NDA/BLA under review","Fast Track","PDUFA Jun 5 2026 (VERITAC-2)","3","ESR1m 2L BC segment",None,"Partnered with Arvinas (ARVN)"),
 ("Pfizer","PFE","NYSE","US common","US","Large ($100-500bn)","Sigvotatug vedotin","B6A-directed ADC","NSCLC 2L","Oncology","Phase 3","—","Be6A Lung-01 Ph3 readout 2026-27","5","2L NSCLC ADC segment",None,"From Seagen acquisition"),
@@ -514,19 +514,38 @@ for row in ws2.iter_rows(min_row=2):
     for cell in row: cell.border = border; cell.alignment = wrap
 ws2.freeze_panes = "B2"; ws2.auto_filter.ref = ws2.dimensions; ws2.row_dimensions[1].height = 32
 
-# ---------- Sheet 3: Key 2026 catalysts (NDA/BLA under review) ----------
+# ---------- Sheet 3: FDA Decisions Pending ----------
+from split_catalyst import split_catalyst, TODAY as SPLIT_TODAY
+
 ws3 = wb.create_sheet("FDA Decisions Pending")
-ws3.append(["公司","代號","藥物","適應症","階段","催化劑/PDUFA","TAM (US$ bn)","PoS (%)","備註"])
+ws3.append(["公司 Company", "代號 Ticker", "成功機會 PoS (%)", "TAM (US$ bn)", "巿值級別 Cap tier",
+            "藥物 Drug", "適應症 Indication", "FDA階段 Stage",
+            f"已發生催化劑/PDUFA (截至 {SPLIT_TODAY:%Y-%m-%d})", "待發生催化劑/PDUFA (未來)",
+            "備註 Notes"])
 for r in ROWS:
-    if r[10].startswith("NDA/BLA"):
-        ws3.append([r[0],r[1],r[6],r[8],r[10],r[12],float(r[13]) if r[13] else None,pos_for(r[10],r[9],r[15]),r[16]])
-for c, w in enumerate([26,8,34,34,26,44,12,9,36], 1):
+    if not r[10].startswith("NDA/BLA"):
+        continue
+    past, fut = split_catalyst(r[12])
+    ws3.append([r[0], r[1], pos_for(r[10], r[9], r[15]), float(r[13]) if r[13] else None, r[5],
+                r[6], r[8], r[10], past or "—", fut or "—", r[16]])
+for c, w in enumerate([26, 9, 11, 12, 16, 34, 34, 26, 52, 44, 36], 1):
     ws3.column_dimensions[get_column_letter(c)].width = w
 for cell in ws3[1]:
-    cell.fill = hdr_fill; cell.font = hdr_font; cell.border = border
+    cell.fill = hdr_fill; cell.font = hdr_font
+    cell.alignment = Alignment(wrap_text=True, vertical="center"); cell.border = border
 for row in ws3.iter_rows(min_row=2):
     for cell in row: cell.border = border; cell.alignment = wrap
-ws3.freeze_panes = "A2"; ws3.auto_filter.ref = ws3.dimensions
+    row[2].number_format = '0'
+    row[3].number_format = '0.0'
+ws3.freeze_panes = "C2"; ws3.auto_filter.ref = ws3.dimensions; ws3.row_dimensions[1].height = 40
+
+# colour-scale the PoS column so the risk gradient reads at a glance
+from openpyxl.formatting.rule import ColorScaleRule
+ws3.conditional_formatting.add(
+    f"C2:C{ws3.max_row}",
+    ColorScaleRule(start_type="num", start_value=0, start_color="F8CBAD",
+                   mid_type="num", mid_value=60, mid_color="FFE699",
+                   end_type="num", end_value=95, end_color="C6E0B4"))
 
 # ---------- Sheet 4: Methodology ----------
 ws4 = wb.create_sheet("Methodology & Notes")
@@ -552,6 +571,8 @@ notes = [
  [""],
  ["TAM 定義", "以 US$ 十億計，代表該適應症/藥物類別之全球可及巿場 (峯值銷售或類別巿場規模)，多來自公司指引或賣方共識；同一公司內多個候選藥可能共享同一 TAM (例如肥胖 ~US$150bn)，故 Company Summary 內加總 TAM 為『未去重』僅供參考。"],
  [""],
+ ["催化劑切分 Catalyst split", "『FDA Decisions Pending』分頁將催化劑按 2026-09-04 切為『已發生』與『待發生』兩欄。判斷準則：clause 陳述已完成動作 (positive / filed / accepted / CRL / RTF / approved / withdrawn / missed) 歸『已發生』；陳述預定動作 (decision / PDUFA / readout / filing) 而日期仍在未來則歸『待發生』；預定動作但日期或整個年度已過，亦歸『已發生』。"],
+ ["[日期已過，結果待核實]", "該 PDUFA 日期已過，但落在本資料集知識截點 (約 2026 年中) 之後，故 FDA 的實際決定結果本表無從得知，必須自行核實。"],
  ["免責聲明 Disclaimer", "僅供研究參考，不構成投資建議。生物科技股價對 FDA 決定高度敏感，請以最新公告核實。"],
 ]
 for n in notes: ws4.append(n)

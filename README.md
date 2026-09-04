@@ -6,7 +6,7 @@ US-listed and ADR-tradable companies with drugs under FDA review or in late-stag
 Sheets:
 1. **Pipeline** — one row per drug candidate: company, ticker, exchange, listing type, drug, mechanism, indication, therapeutic area, FDA stage, designations, catalyst timing, TAM (US$ bn), probability of success (PoS) and its basis.
 2. **Company Summary** — per-company roll-up.
-3. **FDA Decisions Pending** — NDA/BLA currently under review.
+3. **FDA Decisions Pending** — NDA/BLA under review, with PoS, TAM and cap tier beside the ticker, catalysts split into occurred vs pending, and a 24-month (2026-09 → 2028-08) schedule grid shading each pending time point by date precision.
 4. **Methodology & Notes** — stage definitions, PoS base rates and adjustments, TAM definition, linking convention, disclaimer.
 5. **Ticker Watchlist** — one row per unique ticker with a roll-up of its pipeline.
 

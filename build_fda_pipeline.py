@@ -539,6 +539,52 @@ for row in ws3.iter_rows(min_row=2):
     row[3].number_format = '0.0'
 ws3.freeze_panes = "C2"; ws3.auto_filter.ref = ws3.dimensions; ws3.row_dimensions[1].height = 40
 
+# ---------- Sheet 3b: 24-month pending-catalyst schedule ----------
+from schedule_grid import schedule, months as grid_months, GRID_MONTHS
+
+GRID_FILL = {"month": ("1F4E78", "FFFFFF", True),
+             "part":  ("2E75B6", "FFFFFF", False),
+             "year":  ("9DC3E6", "1F1F1F", False),
+             "range": ("DEEBF7", "404040", False)}
+
+status_col = ws3.max_column + 1
+first_grid_col = status_col + 1
+ws3.cell(1, status_col, "排程狀態 Schedule status")
+ws3.column_dimensions[get_column_letter(status_col)].width = 30
+
+for off, (y, m) in enumerate(grid_months()):
+    c = first_grid_col + off
+    cell = ws3.cell(1, c, f"{y}-{m:02d}")
+    cell.fill = PatternFill("solid", fgColor="1F4E78" if m == 1 else "404040")
+    cell.font = Font(bold=True, color="FFFFFF", size=8)
+    cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="bottom")
+    cell.border = border
+    ws3.column_dimensions[get_column_letter(c)].width = 4.2
+
+for r in range(2, ws3.max_row + 1):
+    pending = ws3.cell(r, 10).value
+    cells, status = schedule(pending)
+    sc = ws3.cell(r, status_col, status or "")
+    sc.alignment = wrap; sc.border = border
+    if status.startswith("逾期"):
+        sc.font = Font(color="C00000", bold=True)
+    for off in range(GRID_MONTHS):
+        cell = ws3.cell(r, first_grid_col + off)
+        cell.border = border
+        hit = cells.get(off)
+        if not hit:
+            continue
+        lab, prec, is_start = hit
+        bg, fg, bold = GRID_FILL[prec]
+        cell.fill = PatternFill("solid", fgColor=bg)
+        if is_start:
+            cell.value = lab
+            cell.font = Font(color=fg, bold=bold, size=8)
+            cell.alignment = Alignment(horizontal="center", vertical="center", text_rotation=90)
+
+ws3.auto_filter.ref = f"A1:{get_column_letter(status_col)}{ws3.max_row}"
+ws3.row_dimensions[1].height = 62
+
 # colour-scale the PoS column so the risk gradient reads at a glance
 from openpyxl.formatting.rule import ColorScaleRule
 ws3.conditional_formatting.add(
@@ -573,6 +619,13 @@ notes = [
  [""],
  ["催化劑切分 Catalyst split", "『FDA Decisions Pending』分頁將催化劑按 2026-09-04 切為『已發生』與『待發生』兩欄。判斷準則：clause 陳述已完成動作 (positive / filed / accepted / CRL / RTF / approved / withdrawn / missed) 歸『已發生』；陳述預定動作 (decision / PDUFA / readout / filing) 而日期仍在未來則歸『待發生』；預定動作但日期或整個年度已過，亦歸『已發生』。"],
  ["[日期已過，結果待核實]", "該 PDUFA 日期已過，但落在本資料集知識截點 (約 2026 年中) 之後，故 FDA 的實際決定結果本表無從得知，必須自行核實。"],
+ ["24個月排程格 24-month schedule grid", "『FDA Decisions Pending』分頁最右方為由 2026-09 至 2028-08 的月度格，每格一個月，把『待發生』欄的時間點填上。顏色深淺代表時間精度，並非重要性。"],
+ ["  深藍 (月精度)", "原文有明確年月或日期，例如 PDUFA Sep 18 2026 -> 只填該月。"],
+ ["  中藍 (半年/季精度)", "原文為 early / mid / late / H1 / H2 / Q1-Q4 + 年份，填該區間所有月份。"],
+ ["  淺藍 (年精度)", "原文只有年份，例如 decision 2026 -> 填該年全部月份 (2026 年由 9 月起計)。"],
+ ["  最淺藍 (跨年區間)", "原文為 2026-27 之類跨年區間，填整個區間。"],
+ ["  格內標籤", "PDUFA / 決定 / 遞交 / NDA / BLA / 重交 / 數據 / CVOT / Ph3 / 批核，只標在區間第一格。"],
+ ["排程狀態欄 Schedule status", "『無待發生項目』= 該藥的待發生欄為空 (通常因 PDUFA 日期已過而結果未知)；『逾期未發生』= 原文時窗完全早於 2026-09，該預定事件理應已發生卻無更新，需優先核實；『無明確日期』= 原文無可解析日期 (例如 path uncertain)。"],
  ["免責聲明 Disclaimer", "僅供研究參考，不構成投資建議。生物科技股價對 FDA 決定高度敏感，請以最新公告核實。"],
 ]
 for n in notes: ws4.append(n)

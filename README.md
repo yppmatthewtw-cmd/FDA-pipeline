@@ -21,3 +21,15 @@ python3 build_fda_pipeline.py
 python3 build_fda_pipeline.py "My Watchlist.xlsx"
 ```
 Data is curated as of mid-2026 (rows marked "verify" need checking against FDA/company announcements).
+
+## Third-party review adjudication
+
+`build_review_doc.js` generates a Word report adjudicating the Gemini and Grok
+critiques of the watchlist against the spreadsheet's own data — the obstacle
+taxonomy, the PoS spread between rows with and without a known regulatory
+obstacle, and which dated PDUFA events had actually already passed.
+
+```bash
+npm install docx
+node build_review_doc.js
+```

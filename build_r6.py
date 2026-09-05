@@ -115,6 +115,9 @@ RE_Q = re.compile(r"(20\d{2})\s*Q([1-4])")
 RE_Y = re.compile(r"\b(20\d{2})\b")
 
 
+NON_EVENT = re.compile(r"查無|無公開|未見|未查得|尚未|截至\s*20\d{2}|不予採信|無.{0,6}紀錄")
+
+
 def label_of(text, field_lead=""):
     """Map a dated clause to a short grid label + polarity.
 
@@ -163,6 +166,10 @@ def past_events(idx):
         # split on arrows and full stops too: one history field chains several
         # distinct actions ("CRL ... -> resubmit ... -> AdCom ... -> approval")
         for seg in re.split(r"[；;。]|→|->", field):
+            # "no approval or CRL on record" and "as of 2026-07 still under
+            # review" are statements about absence, not dated events
+            if NON_EVENT.search(seg):
+                continue
             for m in RE_YMD.finditer(seg):
                 y, mo = int(m.group(1)), int(m.group(2))
                 i = gidx(y, mo)
@@ -273,7 +280,11 @@ def build(out_path):
         nxt = ov.get("next", nxt)
         ndate = ov.get("date", ndate)
         other = ov.get("ex_us", other)
+        risk = ov.get("risk", risk)
+        conf = ov.get("conf", conf)
         pos, why = pos_for(i, status)
+        if "pos" in ov:
+            pos, why = ov["pos"], ov.get("why", why)
         tam = PIPE[i][13]
         cap = PIPE[i][5]
 
@@ -290,7 +301,7 @@ def build(out_path):
         rows_sched.append((i, sched))
         ws.append([co, tk, pos, float(tam) if tam else None, cap, drug, ind, status,
                    past, future, notes, sched])
-        rows_meta.append((i, status, ndate, conf, issue, why))
+        rows_meta.append((i, status, ndate, conf, issue, why, nxt))
 
     for c, w in enumerate(WIDTHS, 1):
         ws.column_dimensions[get_column_letter(c)].width = w
@@ -307,7 +318,7 @@ def build(out_path):
     # status colouring on the Stage column, same palette as the grid
     SFILL = {"已獲批": "C6E0B4", "審批中(有PDUFA)": "BDD7EE", "審批中(無PDUFA)": "DEEBF7",
              "CRL": "F8CBAD", "撤回或終止": "D9D9D9", "未遞交": "E7E6E6", "不明": "FFE699"}
-    for n, (i, status, ndate, conf, issue, why) in enumerate(rows_meta, start=2):
+    for n, (i, status, ndate, conf, issue, why, nxt) in enumerate(rows_meta, start=2):
         key = next((k for k in SFILL if status.startswith(k)), "不明")
         ws.cell(n, 8).fill = PatternFill("solid", fgColor=SFILL[key])
 
@@ -322,9 +333,9 @@ def build(out_path):
         c.border = year_edge if m == 1 else border
         ws.column_dimensions[get_column_letter(first + off)].width = GRID_W
 
-    for n, (i, status, ndate, conf, issue, why) in enumerate(rows_meta, start=2):
+    for n, (i, status, ndate, conf, issue, why, nxt) in enumerate(rows_meta, start=2):
         cells = dict(past_events(i))
-        nxt_text = REVIEW[i][11] or ""
+        nxt_text = nxt or ""
         commercial_only = (status.startswith("已獲批")
                            and any(w in nxt_text for w in COMMERCIAL)
                            and not any(w in nxt_text for w in ("PDUFA", "決定", "遞交", "申報", "sNDA", "sBLA", "NDA", "BLA")))
@@ -345,7 +356,9 @@ def build(out_path):
                 continue
             if hit[0] == "__FUT__":
                 bg, fg, bold = FUT_FILL[hit[1]]
-                nt = REVIEW[i][11] or ""
+                # parentheses hold subordinate asides ("...才會決定是否遞交"),
+                # which otherwise hijack the label away from the real event
+                nt = re.sub(r"[（(][^）)]*[）)]", " ", nxt or "")
                 # a regulatory decision outranks whatever else the catalyst
                 # text mentions; otherwise reuse the shared label vocabulary
                 lab = ("PDUFA" if "PDUFA" in nt

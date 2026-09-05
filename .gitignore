@@ -4,3 +4,4 @@ __pycache__/
 # Locally generated named copies (contain build-label in filename)
 FDA_Pipeline_Watchlist*.xlsx
 FDA_R4*.docx
+FDA_Pending_Review*.xlsx

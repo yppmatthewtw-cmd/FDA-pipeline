@@ -33,3 +33,17 @@ obstacle, and which dated PDUFA events had actually already passed.
 npm install docx
 node build_review_doc.js
 ```
+
+## Critical review of the pending tab
+
+`build_pending_review.py` holds the row-by-row review of every asset on the
+"FDA Decisions Pending" tab, verified against FDA / company / EMA sources by web
+search, and writes a six-sheet workbook: per-row review (Phase 1–3 milestones,
+FDA history, other regulators, current status, what the watchlist said, issue
+type, next catalyst, confidence, risk, sources), issue summary, status counts,
+forward catalyst calendar, methodology, and a comparison of three third-party
+reviews (Gemini, Grok, GPT-6) against the verified findings.
+
+```bash
+python3 build_pending_review.py "My Review.xlsx"
+```

@@ -47,3 +47,19 @@ reviews (Gemini, Grok, GPT-6) against the verified findings.
 ```bash
 python3 build_pending_review.py "My Review.xlsx"
 ```
+
+## R6 — verified rebuild of the pending tab
+
+`build_r6.py` regenerates the "FDA Decisions Pending" tab in its original R4
+layout (same twelve columns at the same hand-tuned widths, same 36-month grid,
+same freeze pane) with every row's status, dates, catalysts and probability
+replaced by the verified findings from `build_pending_review.py`. It also emits
+an R4-to-R6 change log and a legend sheet.
+
+```bash
+python3 build_r6.py "FDA_Decisions_Pending R6.xlsx" [overrides.json]
+```
+
+`wf_refresh.js` and `wf_gaps.js` are Workflow scripts that fan out one agent per
+asset (or per open unknown) to re-verify regulatory status against primary
+sources; `wf_gaps.js` covers the undisclosed PDUFA dates and unresolved outcomes.

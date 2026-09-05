@@ -5,3 +5,4 @@ __pycache__/
 FDA_Pipeline_Watchlist*.xlsx
 FDA_R4*.docx
 FDA_Pending_Review*.xlsx
+FDA_Decisions_Pending*.xlsx
